@@ -1,0 +1,82 @@
+#!/bin/sh
+
+# Pre Remove shell script for Solaris and Linux
+# Supports syslog and rsyslog on Solaris and Linux
+# Assumes if config file exists service exists
+
+# Update /etc/shells
+
+VENDOR="$VENDOR"
+
+if [ -f "/etc/shells" ] ; then
+  if [ "`cat /etc/shells | grep '/opt/$VENDOR/bin/bash'`" = "/opt/$VENDOR/bin/bash" ]; then
+    if [ -f "/etc/shells.prebsl" ] ; then
+      rm /etc/shells.prebsl
+    fi
+    cat /etc/shells |grep -v '/opt/$VENDOR/bin/bash' > /etc/shells.postbsl
+    cat /etc/shells.postbsl > /etc/shells
+    rm /etc/shells.postbsl
+  fi
+fi
+
+# Update /etc/syslog.conf
+
+if [ -f "/etc/syslog.conf" ] ; then
+  if [ "`cat /etc/syslog.conf | awk '{print $2}' |grep '/var/log/userlog'`" = "/var/log/userlog" ]; then
+    if [ -f "/etc/syslog.conf.prebsl" ] ; then
+      rm /etc/syslog.conf.prebsl
+    fi
+    cat /etc/syslog.conf |grep -v '/var/log/userlog' > /etc/syslog.conf.postbsl
+    cat /etc/syslog.conf.postbsl > /etc/syslog.conf
+    rm /etc/syslog.conf.postbsl
+    # Restart syslog
+    if [ “`uname`” = “SunOS” ]; then
+      if [ "`uname -r |cut -f2 -d ‘.’`" -lt "10" ]; then
+        /etc/init.d/syslog stop ; /etc/init.d/syslog start
+      else
+        svcadm restart svc:/system/system-log:default
+      fi
+    fi
+    if [ “`uname`” = “Linux” ]; then
+      service syslog restart
+    fi
+  fi
+fi
+
+# Update /etc/rsyslog.conf
+
+if [ -f "/etc/rsyslog.conf" ] ; then
+  if [ "`cat /etc/rsyslog.conf | awk '{print $2}' |grep '/var/log/userlog'`" = "/var/log/userlog" ]; then
+    if [ -f "/etc/rsyslog.conf.prebsl" ] ; then
+      rm /etc/rsyslog.conf.prebsl
+    fi
+    cat /etc/rsyslog.conf |grep -v '/var/log/userlog' > /etc/rsyslog.conf.postbsl
+    cat /etc/rsyslog.conf.postbsl > /etc/rsyslog.conf
+    rm /etc/rsyslog.conf.postbsl
+    # Restart syslog
+    if [ “`uname`” = “SunOS” ]; then
+      if [ "`uname -r |cut -f2 -d ‘.’`" -lt "10" ]; then
+        /etc/init.d/rsyslog stop ; /etc/init.d/rsyslog start
+      else
+        svcadm restart rsyslog
+      fi
+    fi
+    if [ “`uname`” = “Linux” ]; then
+      service rsyslog restart
+    fi
+  fi
+fi
+
+# Manage /var/log/userlog
+
+if [ “`uname`” = “SunOS” ]; then
+  if [ "`logadm -V |awk '{print $1}' |grep '/var/log/userlog'`" = "/var/log/userlog" ]; then
+    rm /etc/logadm.conf.prebsl
+    logadm -r /var/log/userlog
+  fi
+fi
+
+if [ “`uname`” = “Linux” ]; then
+  rm /etc/logrotate.d/bsl
+fi
+
